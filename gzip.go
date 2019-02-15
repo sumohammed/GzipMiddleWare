@@ -1,4 +1,4 @@
-package middleware
+package GzipMiddleWare
 
 import (
 	"compress/gzip"
@@ -7,11 +7,22 @@ import (
 	"strings"
 )
 
-type GzipMiddleWare struct {
-	Next http.Handler
+type MiddleWare struct {
+	Next  http.Handler
+	Hosts []string
 }
 
-func (gm *GzipMiddleWare) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (gm *MiddleWare) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	host := r.Header.Get("Origin")
+
+	if gm.Hosts != nil {
+		for _, url := range gm.Hosts {
+			if url == host {
+				w.Header().Set("Access-Control-Allow-Origin", host)
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+			}
+		}
+	}
 	if gm.Next == nil {
 		gm.Next = http.DefaultServeMux
 	}
