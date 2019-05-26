@@ -8,28 +8,53 @@ import (
 )
 
 type MiddleWare struct {
-	Next  http.Handler
-	Hosts []string
+	Next http.Handler
 }
 
 func (gm *MiddleWare) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	host := r.Header.Get("Origin")
 
-	if gm.Hosts != nil {
-		for _, url := range gm.Hosts {
-			if url == host {
-				w.Header().Set("Access-Control-Allow-Origin", host)
-				w.Header().Set("Access-Control-Allow-Credentials", "true")
-			}
-		}
-	}
+	domain := strings.Join(r.Header["Origin"], " ")
+	w.Header().Set("Access-Control-Allow-Origin", domain)
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	encodings := r.Header.Get("Accept-Encoding")
+
 	if gm.Next == nil {
 		gm.Next = http.DefaultServeMux
 	}
 
-	encodings := r.Header.Get("Accept-Encoding")
 	if !strings.Contains(encodings, "gzip") {
 		gm.Next.ServeHTTP(w, r)
+		return
+	}
+
+	// Serve pre compressed files
+	// in the /public folder
+
+	if strings.Contains(r.URL.Path, "/public/javascript") || strings.Contains(r.URL.Path, "/public/css") {
+		if strings.Contains(r.URL.Path, ".css") {
+			w.Header().Add("Content-Type", "text/css")
+		} else if strings.Contains(r.URL.Path, ".js") {
+			w.Header().Add("Content-Type", "application/javascript")
+		}
+
+		if strings.ContainsAny(r.URL.Path, ".js | .css") {
+			if strings.Contains(encodings, "br") {
+				r.URL.Path = r.URL.Path + ".br"
+
+				w.Header().Add("Content-Encoding", "br")
+
+				gm.Next.ServeHTTP(w, r)
+
+			} else if strings.Contains(encodings, "gzip") {
+				r.URL.Path = r.URL.Path + ".gz"
+
+				w.Header().Add("Content-Encoding", "gzip")
+				w.Header().Add("Content-Type", "application/javascript")
+				gm.Next.ServeHTTP(w, r)
+
+			}
+		}
+
 		return
 	}
 
