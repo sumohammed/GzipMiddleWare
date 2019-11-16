@@ -27,37 +27,6 @@ func (gm *MiddleWare) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Serve pre compressed files
-	// in the /public folder
-
-	if strings.Contains(r.URL.Path, "/public/javascript") || strings.Contains(r.URL.Path, "/public/css") {
-		if strings.Contains(r.URL.Path, ".css") {
-			w.Header().Add("Content-Type", "text/css")
-		} else if strings.Contains(r.URL.Path, ".js") {
-			w.Header().Add("Content-Type", "application/javascript")
-		}
-
-		if strings.ContainsAny(r.URL.Path, ".js | .css") {
-			if strings.Contains(encodings, "br") {
-				r.URL.Path = r.URL.Path + ".br"
-
-				w.Header().Add("Content-Encoding", "br")
-
-				gm.Next.ServeHTTP(w, r)
-
-			} else if strings.Contains(encodings, "gzip") {
-				r.URL.Path = r.URL.Path + ".gz"
-
-				w.Header().Add("Content-Encoding", "gzip")
-				w.Header().Add("Content-Type", "application/javascript")
-				gm.Next.ServeHTTP(w, r)
-
-			}
-		}
-
-		return
-	}
-
 	w.Header().Add("Content-Encoding", "gzip")
 	gzipwriter := gzip.NewWriter(w)
 	defer gzipwriter.Close()
